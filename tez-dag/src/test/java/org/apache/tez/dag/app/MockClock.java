@@ -20,21 +20,9 @@ package org.apache.tez.dag.app;
 
 import org.apache.hadoop.yarn.util.Clock;
 
-import java.util.Collection;
-import java.util.LinkedList;
-
 public class MockClock implements Clock {
   
-  long time;
-  Collection<MockClockListener> listeners = new LinkedList<>();
-
-  public MockClock() {
-    this(1000);
-  }
-
-  public MockClock(long initTime) {
-    time = initTime;
-  }
+  long time = 1000;
 
   @Override
   public long getTime() {
@@ -43,16 +31,6 @@ public class MockClock implements Clock {
   
   public void incrementTime(long inc) {
     time += inc;
-    for (MockClockListener listener : listeners) {
-      listener.onTimeUpdated(time);
-    }
   }
 
-  public void register(MockClockListener listener) {
-    listeners.add(listener);
-  }
-
-  public interface MockClockListener {
-    void onTimeUpdated(long newTime);
-  }
 }

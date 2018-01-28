@@ -17,8 +17,6 @@ package org.apache.tez.dag.helpers;
 import org.apache.hadoop.security.Credentials;
 import org.apache.tez.serviceplugins.api.DagInfo;
 
-import java.util.BitSet;
-
 public class DagInfoImplForTest implements DagInfo {
 
   private final int index;
@@ -41,16 +39,6 @@ public class DagInfoImplForTest implements DagInfo {
 
   @Override
   public Credentials getCredentials() {
-    return null;
-  }
-
-  @Override
-  public int getTotalVertices() {
-    return 0;
-  }
-
-  @Override
-  public BitSet getVertexDescendants(int vertexIndex) {
     return null;
   }
 }

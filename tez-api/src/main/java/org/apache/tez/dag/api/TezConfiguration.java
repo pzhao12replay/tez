@@ -527,17 +527,6 @@ public class TezConfiguration extends Configuration {
                                      TEZ_AM_PREFIX + "legacy.speculative.slowtask.threshold";
 
   /**
-   * Long value. Specifies the timeout after which tasks on a single task vertex must be speculated.
-   * A negative value means not to use timeout for speculation of single task vertices.
-   */
-  @Unstable
-  @ConfigurationScope(Scope.AM)
-  @ConfigurationProperty(type="long")
-  public static final String TEZ_AM_LEGACY_SPECULATIVE_SINGLE_TASK_VERTEX_TIMEOUT =
-                                     TEZ_AM_PREFIX + "legacy.speculative.single.task.vertex.timeout";
-  public static final long TEZ_AM_LEGACY_SPECULATIVE_SINGLE_TASK_VERTEX_TIMEOUT_DEFAULT = -1;
-
-  /**
    * Int value. Upper limit on the number of threads user to launch containers in the app
    * master. Expert level setting. 
    */
@@ -593,23 +582,13 @@ public class TezConfiguration extends Configuration {
 
   /**
    * Boolean value. Specifies whether a re-scheduled attempt of a task, caused by previous
-   * failures gets higher priority
+   * failures gets special treatment - higher priority, dropped location hints.
    */
   @ConfigurationScope(Scope.VERTEX)
   @ConfigurationProperty(type="boolean")
   public static final String TEZ_AM_TASK_RESCHEDULE_HIGHER_PRIORITY =
       TEZ_AM_PREFIX + "task.reschedule.higher.priority";
   public static final boolean TEZ_AM_TASK_RESCHEDULE_HIGHER_PRIORITY_DEFAULT=true;
-
-  /**
-   * Boolean value. Specifies whether a re-scheduled attempt of a task, caused by previous
-   * failure get relaxed locality
-   */
-  @ConfigurationScope(Scope.VERTEX)
-  @ConfigurationProperty(type="boolean")
-  public static final String TEZ_AM_TASK_RESCHEDULE_RELAXED_LOCALITY =
-      TEZ_AM_PREFIX + "task.reschedule.relaxed.locality";
-  public static final boolean TEZ_AM_TASK_RESCHEDULE_RELAXED_LOCALITY_DEFAULT=true;
 
   /**
    * Boolean value. Enabled blacklisting of nodes of nodes that are considered faulty. These nodes 
@@ -679,15 +658,6 @@ public class TezConfiguration extends Configuration {
   public static final String TEZ_AM_DAG_SCHEDULER_CLASS = TEZ_AM_PREFIX + "dag.scheduler.class";
   public static final String TEZ_AM_DAG_SCHEDULER_CLASS_DEFAULT =
       "org.apache.tez.dag.app.dag.impl.DAGSchedulerNaturalOrder";
-
-  /**
-   * String value. The class to be used for the YARN task scheduler. Expert level setting.
-   */
-  @ConfigurationScope(Scope.AM)
-  @ConfigurationProperty
-  public static final String TEZ_AM_YARN_SCHEDULER_CLASS = TEZ_AM_PREFIX + "yarn.scheduler.class";
-  public static final String TEZ_AM_YARN_SCHEDULER_CLASS_DEFAULT =
-      "org.apache.tez.dag.app.rm.YarnTaskSchedulerService";
 
   /** Int value. The amount of memory in MB to be used by the AppMaster */
   @ConfigurationScope(Scope.AM)

@@ -75,10 +75,8 @@ import org.apache.tez.dag.app.dag.event.DAGEventType;
 import org.apache.tez.dag.app.dag.event.TaskAttemptEventAttemptKilled;
 import org.apache.tez.dag.app.dag.event.TaskAttemptEventKillRequest;
 import org.apache.tez.dag.app.dag.event.TaskAttemptEventOutputFailed;
-import org.apache.tez.dag.app.dag.event.TaskAttemptEventTerminationCauseEvent;
 import org.apache.tez.dag.app.dag.event.TaskEvent;
 import org.apache.tez.dag.app.dag.event.TaskEventScheduleTask;
-import org.apache.tez.dag.app.dag.event.TaskEventTAKilled;
 import org.apache.tez.dag.app.dag.event.TaskEventTAUpdate;
 import org.apache.tez.dag.app.dag.event.TaskEventTermination;
 import org.apache.tez.dag.app.dag.event.TaskEventType;
@@ -1147,21 +1145,7 @@ public class TaskImpl implements Task, EventHandler<TaskEvent> {
           TaskAttemptStateInternal.KILLED);
       // we KillWaitAttemptCompletedTransitionready have a spare
       task.taskAttemptStatus.put(castEvent.getTaskAttemptID().getId(), true);
-
-      boolean isRejection = false;
-      if (event instanceof TaskEventTAKilled) {
-        TaskEventTAKilled killEvent = (TaskEventTAKilled) event;
-        if (killEvent.getCausalEvent() instanceof TaskAttemptEventTerminationCauseEvent) {
-          TaskAttemptEventTerminationCauseEvent cause =
-              (TaskAttemptEventTerminationCauseEvent)killEvent.getCausalEvent();
-          isRejection = cause.getTerminationCause() == TaskAttemptTerminationCause.SERVICE_BUSY;
-        }
-      }
-      if (isRejection) { // TODO: remove as part of TEZ-3881.
-        task.getVertex().incrementRejectedTaskAttemptCount();
-      } else {
-        task.getVertex().incrementKilledTaskAttemptCount();
-      }
+      task.getVertex().incrementKilledTaskAttemptCount();
       if (task.shouldScheduleNewAttempt()) {
         task.addAndScheduleAttempt(castEvent.getTaskAttemptID());
       }
@@ -1264,6 +1248,12 @@ public class TaskImpl implements Task, EventHandler<TaskEvent> {
 
     @Override
     public TaskStateInternal transition(TaskImpl task, TaskEvent event) {
+      if (task.leafVertex) {
+        LOG.error("Unexpected event for task of leaf vertex " + event.getType() + ", taskId: "
+            + task.getTaskId());
+        task.internalError(event.getType());
+      }
+
       TaskEventTAFailed castEvent = (TaskEventTAFailed) event;
       TezTaskAttemptID failedAttemptId = castEvent.getTaskAttemptID();
       TaskAttempt failedAttempt = task.getAttempt(failedAttemptId);
@@ -1287,12 +1277,7 @@ public class TaskImpl implements Task, EventHandler<TaskEvent> {
         task.taskAttemptStatus.put(failedAttemptId.getId(), true);
         return TaskStateInternal.SUCCEEDED;
       }
-
-      if (task.leafVertex) {
-        LOG.error("Unexpected event for task of leaf vertex " + event.getType() + ", taskId: "
-            + task.getTaskId());
-        task.internalError(event.getType());
-      }
+      
       Preconditions.checkState(castEvent.getCausalEvent() != null);
       TaskAttemptEventOutputFailed destinationEvent = 
           (TaskAttemptEventOutputFailed) castEvent.getCausalEvent();

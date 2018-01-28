@@ -63,10 +63,6 @@ public class Progress {
     return proxy.getKilledTaskAttemptCount();
   }
 
-  public int getRejectedTaskAttemptCount() {
-    return proxy.getRejectedTaskAttemptCount();
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof Progress){
@@ -77,8 +73,7 @@ public class Progress {
           && getFailedTaskCount() == other.getFailedTaskCount()
           && getKilledTaskCount() == other.getKilledTaskCount()
           && getFailedTaskAttemptCount() == other.getFailedTaskAttemptCount()
-          && getKilledTaskAttemptCount() == other.getKilledTaskAttemptCount()
-          && getRejectedTaskAttemptCount() == other.getRejectedTaskAttemptCount();
+          && getKilledTaskAttemptCount() == other.getKilledTaskAttemptCount();
     }
     return false;
   }
@@ -99,8 +94,6 @@ public class Progress {
         getFailedTaskAttemptCount();
     result = prime * result +
         getKilledTaskAttemptCount();
-    result = prime * result +
-        getRejectedTaskAttemptCount();
 
     return result;
   }
@@ -125,10 +118,6 @@ public class Progress {
     if (getKilledTaskAttemptCount() > 0) {
       sb.append(" KilledTaskAttempts: ");
       sb.append(getKilledTaskAttemptCount());
-    }
-    if (getRejectedTaskAttemptCount() > 0) {
-      sb.append(" RejectedTaskAttempts: ");
-      sb.append(getRejectedTaskAttemptCount());
     }
     return sb.toString();
   }

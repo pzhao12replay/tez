@@ -187,11 +187,6 @@ class TaskSchedulerContextImplWrapper implements TaskSchedulerContext {
     return real.getAMState();
   }
 
-  @Override
-  public int getVertexIndexForTask(Object task) {
-    return real.getVertexIndexForTask(task);
-  }
-
   // End of getters which do not need to go through a thread. Underlying implementation
   // does not use locks.
 

@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -191,7 +190,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
   volatile Map<TezVertexID, Vertex> vertices = new HashMap<TezVertexID, Vertex>();
   @VisibleForTesting
   Map<String, Edge> edges = new HashMap<String, Edge>();
-  ArrayList<BitSet> vertexDescendants;
   private TezCounters dagCounters = new TezCounters();
   private Object fullCountersLock = new Object();
   @VisibleForTesting
@@ -869,7 +867,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
     int totalKilledTaskCount = 0;
     int totalFailedTaskAttemptCount = 0;
     int totalKilledTaskAttemptCount = 0;
-    int totalRejectedTaskAttemptCount = 0;
     readLock.lock();
     try {
       for(Map.Entry<String, Vertex> entry : vertexMap.entrySet()) {
@@ -882,7 +879,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
         totalKilledTaskCount += progress.getKilledTaskCount();
         totalFailedTaskAttemptCount += progress.getFailedTaskAttemptCount();
         totalKilledTaskAttemptCount += progress.getKilledTaskAttemptCount();
-        totalRejectedTaskAttemptCount += progress.getRejectedTaskAttemptCount();
       }
       ProgressBuilder dagProgress = new ProgressBuilder();
       dagProgress.setTotalTaskCount(totalTaskCount);
@@ -892,7 +888,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
       dagProgress.setKilledTaskCount(totalKilledTaskCount);
       dagProgress.setFailedTaskAttemptCount(totalFailedTaskAttemptCount);
       dagProgress.setKilledTaskAttemptCount(totalKilledTaskAttemptCount);
-      dagProgress.setRejectedTaskAttemptCount(totalRejectedTaskAttemptCount);
       status.setState(getState());
       status.setDiagnostics(diagnostics);
       status.setDAGProgress(dagProgress);
@@ -947,7 +942,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
     int totalKilledTaskCount = 0;
     int totalFailedTaskAttemptCount = 0;
     int totalKilledTaskAttemptCount = 0;
-    int totalRejectedTaskAttemptCount = 0;
     readLock.lock();
     try {
       for(Map.Entry<String, Vertex> entry : vertexMap.entrySet()) {
@@ -959,7 +953,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
         totalKilledTaskCount += progress.getKilledTaskCount();
         totalFailedTaskAttemptCount += progress.getFailedTaskAttemptCount();
         totalKilledTaskAttemptCount += progress.getKilledTaskAttemptCount();
-        totalRejectedTaskAttemptCount += progress.getRejectedTaskAttemptCount();
       }
       ProgressBuilder dagProgress = new ProgressBuilder();
       dagProgress.setTotalTaskCount(totalTaskCount);
@@ -969,7 +962,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
       dagProgress.setKilledTaskCount(totalKilledTaskCount);
       dagProgress.setFailedTaskAttemptCount(totalFailedTaskAttemptCount);
       dagProgress.setKilledTaskAttemptCount(totalKilledTaskAttemptCount);
-      dagProgress.setRejectedTaskAttemptCount(totalRejectedTaskAttemptCount);
       return dagProgress;
     } finally {
       readLock.unlock();
@@ -1460,16 +1452,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
   }
 
   @Override
-  public BitSet getVertexDescendants(int vertexIndex) {
-    readLock.lock();
-    try {
-      return vertexDescendants.get(vertexIndex);
-    } finally {
-      readLock.unlock();
-    }
-  }
-
-  @Override
   public int getSuccessfulVertices() {
     readLock.lock();
     try {
@@ -1572,8 +1554,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
       parseVertexEdges(this, edgePlans, v);
     }
 
-    computeVertexDescendants();
-
     // Initialize the edges, now that the payload and vertices have been set.
     for (Edge e : edges.values()) {
       try {
@@ -1628,31 +1608,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
       dag.edges.put(edgePlan.getId(),
           new Edge(edgeProperty, dag.getEventHandler(), dagConf));
     }
-  }
-
-  private void computeVertexDescendants() {
-    vertexDescendants = new ArrayList<>(numVertices);
-    for (int i = 0; i < numVertices; ++i) {
-      vertexDescendants.add(new BitSet(numVertices));
-    }
-    BitSet verticesVisited = new BitSet(numVertices);
-    for (Vertex v : vertices.values()) {
-      computeVertexDescendants(verticesVisited, v);
-    }
-  }
-
-  private BitSet computeVertexDescendants(BitSet verticesVisited, Vertex v) {
-    int vertexIndex = v.getVertexId().getId();
-    BitSet descendants = vertexDescendants.get(vertexIndex);
-    if (!verticesVisited.get(vertexIndex)) {
-      for (Vertex child : v.getOutputVertices().keySet()) {
-        descendants.set(child.getVertexId().getId());
-        BitSet childDescendants = computeVertexDescendants(verticesVisited, child);
-        descendants.or(childDescendants);
-      }
-      verticesVisited.set(vertexIndex);
-    }
-    return descendants;
   }
 
   private static void assignDAGScheduler(DAGImpl dag) throws TezException {

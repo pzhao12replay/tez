@@ -19,10 +19,7 @@
 package org.apache.tez.common;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
@@ -35,8 +32,6 @@ import org.apache.hadoop.yarn.util.RackResolver;
  * Overrides CachedDNSToSwitchMapping to ensure that it does not try to resolve hostnames
  */
 public class MockDNSToSwitchMapping extends CachedDNSToSwitchMapping implements DNSToSwitchMapping {
-  private static final Map<String, String> rackMap =
-      Collections.synchronizedMap(new HashMap<String, String>());
 
   private final String defaultRack = "/default-rack";
 
@@ -48,11 +43,7 @@ public class MockDNSToSwitchMapping extends CachedDNSToSwitchMapping implements 
   public List<String> resolve(List<String> strings) {
     List<String> resolvedHosts = new ArrayList<String>();
     for (String h : strings) {
-      String rack = rackMap.get(h);
-      if (rack == null) {
-        rack = defaultRack;
-      }
-      resolvedHosts.add(rack);
+      resolvedHosts.add(defaultRack);
     }
     return resolvedHosts;
   }
@@ -71,7 +62,4 @@ public class MockDNSToSwitchMapping extends CachedDNSToSwitchMapping implements 
     RackResolver.init(rackResolverConf);
   }
 
-  public static void addRackMapping(String host, String rack) {
-    rackMap.put(host, rack);
-  }
 }

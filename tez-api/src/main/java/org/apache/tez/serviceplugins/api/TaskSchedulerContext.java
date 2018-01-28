@@ -220,5 +220,4 @@ public interface TaskSchedulerContext extends ServicePluginContextBase {
    */
   AMState getAMState();
 
-  int getVertexIndexForTask(Object task);
 }

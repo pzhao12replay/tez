@@ -139,8 +139,6 @@ public class TaskSchedulerManager extends AbstractService implements
   BlockingQueue<AMSchedulerEvent> eventQueue
                               = new LinkedBlockingQueue<AMSchedulerEvent>();
 
-  private final String yarnSchedulerClassName;
-
   // Not tracking container / task to schedulerId. Instead relying on everything flowing through
   // the system and being propagated back via events.
 
@@ -166,8 +164,6 @@ public class TaskSchedulerManager extends AbstractService implements
     this.historyUrl = null;
     this.isLocalMode = false;
     this.hadoopShim = new HadoopShimsLoader(appContext.getAMConf()).getHadoopShim();
-    this.yarnSchedulerClassName = appContext.getAMConf().get(TezConfiguration.TEZ_AM_YARN_SCHEDULER_CLASS,
-        TezConfiguration.TEZ_AM_YARN_SCHEDULER_CLASS_DEFAULT);
   }
 
   /**
@@ -200,8 +196,6 @@ public class TaskSchedulerManager extends AbstractService implements
     this.historyUrl = getHistoryUrl();
     this.isLocalMode = isLocalMode;
     this.hadoopShim = hadoopShim;
-    this.yarnSchedulerClassName = appContext.getAMConf().get(TezConfiguration.TEZ_AM_YARN_SCHEDULER_CLASS,
-        TezConfiguration.TEZ_AM_YARN_SCHEDULER_CLASS_DEFAULT);
     this.appCallbackExecutor = createAppCallbackExecutorService();
     if (this.webUI != null) {
       this.webUI.setHistoryUrl(this.historyUrl);
@@ -580,11 +574,9 @@ public class TaskSchedulerManager extends AbstractService implements
 
   @VisibleForTesting
   TaskScheduler createYarnTaskScheduler(TaskSchedulerContext taskSchedulerContext,
-                                        int schedulerId) throws TezException {
-    LOG.info("Creating YARN TaskScheduler: {}", yarnSchedulerClassName);
-    return ReflectionUtils.createClazzInstance(yarnSchedulerClassName,
-        new Class[] { TaskSchedulerContext.class },
-        new Object[] { taskSchedulerContext });
+                                        int schedulerId) {
+    LOG.info("Creating TaskScheduler: YarnTaskSchedulerService");
+    return new YarnTaskSchedulerService(taskSchedulerContext);
   }
 
   @VisibleForTesting
@@ -692,14 +684,12 @@ public class TaskSchedulerManager extends AbstractService implements
 
   public void initiateStop() {
     for (int i = 0 ; i < taskSchedulers.length ; i++) {
-      if (taskSchedulers[i] != null) {
-        try {
-          taskSchedulers[i].getTaskScheduler().initiateStop();
-        } catch (Exception e) {
-          // Ignore for now as scheduler stop invoked on shutdown
-          LOG.error("Failed to do a clean initiateStop for Scheduler: "
-              + Utils.getTaskSchedulerIdentifierString(i, appContext), e);
-        }
+      try {
+        taskSchedulers[i].getTaskScheduler().initiateStop();
+      } catch (Exception e) {
+        // Ignore for now as scheduler stop invoked on shutdown
+        LOG.error("Failed to do a clean initiateStop for Scheduler: "
+            + Utils.getTaskSchedulerIdentifierString(i, appContext), e);
       }
     }
   }
@@ -896,10 +886,11 @@ public class TaskSchedulerManager extends AbstractService implements
       LOG.info("Error reported by scheduler {} - {}",
           Utils.getTaskSchedulerIdentifierString(taskSchedulerIndex, appContext) + ": " +
               diagnostics);
-      if (taskSchedulerDescriptors[taskSchedulerIndex].getClassName().equals(yarnSchedulerClassName)) {
+      if (taskSchedulerDescriptors[taskSchedulerIndex].getClassName()
+          .equals(YarnTaskSchedulerService.class.getName())) {
         LOG.warn(
             "Reporting a SchedulerServiceError to the DAGAppMaster since the error" +
-                " was reported by the YARN task scheduler");
+                " was reported by the default YARN Task Scheduler");
         sendEvent(new DAGAppMasterEventSchedulingServiceError(diagnostics));
       }
     } else if (servicePluginError.getErrorType() == ServicePluginError.ErrorType.PERMANENT) {
@@ -939,11 +930,6 @@ public class TaskSchedulerManager extends AbstractService implements
   public void dagSubmitted() {
     // Nothing to do right now. Indicates that a new DAG has been submitted and
     // the context has updated information.
-  }
-
-  public int getVertexIndexForTask(Object task) {
-    TaskAttempt attempt = (TaskAttempt) task;
-    return attempt.getVertexID().getId();
   }
 
   public void preemptContainer(int schedulerId, ContainerId containerId) {
@@ -992,21 +978,13 @@ public class TaskSchedulerManager extends AbstractService implements
   }
 
   public boolean hasUnregistered() {
-    // Only return true if all task schedulers that were registered successfully unregister
-    if (taskSchedulers.length == 0) {
-      return false;
-    }
     boolean result = true;
-    for (int i = 0; i < taskSchedulers.length; i++) {
+    for (int i = 0 ; i < taskSchedulers.length ; i++) {
       // Explicitly not catching any exceptions around this API
       // No clear route to recover. Better to crash.
-      if (taskSchedulers[i] == null) {
-        return false;
-      }
       try {
         result = result & this.taskSchedulers[i].hasUnregistered();
       } catch (Exception e) {
-        result = false;
         String msg = "Error in TaskScheduler when checking if a scheduler has unregistered"
             + ", scheduler=" + Utils.getTaskSchedulerIdentifierString(i, appContext);
         LOG.error(msg, e);

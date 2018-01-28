@@ -183,11 +183,6 @@ public class TaskSchedulerContextImpl implements TaskSchedulerContext {
   }
 
   @Override
-  public int getVertexIndexForTask(Object task) {
-    return taskSchedulerManager.getVertexIndexForTask(task);
-  }
-
-  @Override
   public void reportError(ServicePluginError servicePluginError, String diagnostics,
                           DagInfo dagInfo) {
     Preconditions.checkNotNull(servicePluginError, "ServicePluginError must be specified");
